@@ -143,7 +143,6 @@ def prittifyEvent(server, event):
             channelname = server.channelname(event.parms.chanid)
             output += f'channel {channelname} created'
         case 'removechannel':
-            #channelname = server.channelname(event.parms.chanid)
             output += f'channel with id {event.parms.chanid} deleted'
         case 'updatechannel':
             channelname = server.channelname(event.parms.chanid)
