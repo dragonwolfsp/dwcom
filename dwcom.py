@@ -197,7 +197,7 @@ class Trigger(TriggerBase):
         doSpeak = getServerConfigItem(self.server.shortname, 'speech')
         if doSpeak != True and doSpeak is not None: return
         noSpeak = getServerConfigItem(self.server.shortname, 'nospeak')
-        interrupt = getServerConfigItem(self.server.shortname, 'speechInterrupt')
+        interrupt = getServerConfigItem(self.server.shortname, 'speechinterrupt')
         if interrupt is None: interrupt = True
         if noSpeak:
             if self.event.event in noSpeak.split('+'): return
