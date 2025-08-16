@@ -110,9 +110,13 @@ def prittifyEvent(server, event):
         case 'loggedout':
             output += f' {userTypeString} {prittyName} logged out'
         case 'adduser':
-            output += f' {userTypeString} {prittyName} joined channel {server.channelname(event.parms.chanid)}'
+            channelName= server.channelname(event.parms.chanid)
+            channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
+            output += f' {userTypeString} {prittyName} joined channel {channelName}'
         case 'removeuser':
-            output += f' {userTypeString} {prittyName} left channel {server.channelname(event.parms.chanid)}'
+            channelName= server.channelname(event.parms.chanid)
+            channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
+            output += f' {userTypeString} {prittyName} left channel {channelName}'
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
             statusMode = event.parms.statusmode
