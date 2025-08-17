@@ -208,6 +208,44 @@ noSpeak = updateuser+updatechannel+serverupdate
 
 ---
 
+---
+
+### Randomized Login/Logout Messages
+
+dwcom supports **custom randomized speech messages** for login and logout events.
+
+* Create the following text files in your `ttcom/text/` directory:
+
+  * `logins.txt`
+  * `logouts.txt`
+
+* Each file should contain one possible spoken message **per line**.
+
+* When a user logs in or out, dwcom will randomly select a line from the corresponding file to speak.
+
+If the files are missing or empty, dwcom falls back to the default messages:
+
+* `"logged in"`
+* `"logged out"`
+
+**Example (`logins.txt`):**
+
+```
+ runeports in with a flash of golden light.
+soars in from on high
+Charges in, blade held high
+```
+
+**Example (`logouts.txt`):**
+
+```
+runeports away in a flash of golden light.
+leaps into the sky, soaring away.
+Draws a blade and charges off.
+```
+
+---
+
 ## Configuring Sounds
 
 By default:

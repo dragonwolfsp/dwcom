@@ -10,6 +10,7 @@ from conf import conf
 from notifiers import sendSystemNotification, sendProwlNotification, ntfyNotifier
 from speech import Speech
 from logger import getServerLogger
+from fileRandomizer import getRandomLine
 
 serverConfigs = conf.servers()
 audioChannnel = AudioChannel()
@@ -106,9 +107,13 @@ def prittifyEvent(server, event):
         userTypeString = 'admin' if userinfo['admin'] == True else 'user'
     match event.event:
         case 'loggedin':
-            output += f' {userTypeString} {prittyName} logged in'
+            loginMessage = 'logged in'
+            if os.path.exists('text/logins.txt'):  loginMessage = getRandomLine('text/logins.txt')
+            output += f' {userTypeString} {prittyName} {loginMessage}'
         case 'loggedout':
-            output += f' {userTypeString} {prittyName} logged out'
+            logOutMessage = 'logged out'
+            if os.path.exists('text/logouts.txt'):  logOutMessage = getRandomLine('text/logouts.txt')
+            output += f' {userTypeString} {prittyName} {logOutMessage}'
         case 'adduser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
