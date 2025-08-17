@@ -10,6 +10,7 @@ from conf import conf
 from notifiers import sendSystemNotification, sendProwlNotification, ntfyNotifier
 from speech import Speech
 from logger import getServerLogger
+from fileRandomizer import getRandomLine
 
 serverConfigs = conf.servers()
 audioChannnel = AudioChannel()
@@ -106,13 +107,21 @@ def prittifyEvent(server, event):
         userTypeString = 'admin' if userinfo['admin'] == True else 'user'
     match event.event:
         case 'loggedin':
-            output += f' {userTypeString} {prittyName} logged in'
+            loginMessage = 'logged in'
+            if os.path.exists('text/logins.txt'):  loginMessage = getRandomLine('text/logins.txt')
+            output += f' {userTypeString} {prittyName} {loginMessage}'
         case 'loggedout':
-            output += f' {userTypeString} {prittyName} logged out'
+            logOutMessage = 'logged out'
+            if os.path.exists('text/logouts.txt'):  logOutMessage = getRandomLine('text/logouts.txt')
+            output += f' {userTypeString} {prittyName} {logOutMessage}'
         case 'adduser':
-            output += f' {userTypeString} {prittyName} joined channel {server.channelname(event.parms.chanid)}'
+            channelName= server.channelname(event.parms.chanid)
+            channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
+            output += f' {userTypeString} {prittyName} joined channel {channelName}'
         case 'removeuser':
-            output += f' {userTypeString} {prittyName} left channel {server.channelname(event.parms.chanid)}'
+            channelName= server.channelname(event.parms.chanid)
+            channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
+            output += f' {userTypeString} {prittyName} left channel {channelName}'
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
             statusMode = event.parms.statusmode
@@ -143,7 +152,6 @@ def prittifyEvent(server, event):
             channelname = server.channelname(event.parms.chanid)
             output += f'channel {channelname} created'
         case 'removechannel':
-            #channelname = server.channelname(event.parms.chanid)
             output += f'channel with id {event.parms.chanid} deleted'
         case 'updatechannel':
             channelname = server.channelname(event.parms.chanid)
@@ -198,7 +206,7 @@ class Trigger(TriggerBase):
         doSpeak = getServerConfigItem(self.server.shortname, 'speech')
         if doSpeak != True and doSpeak is not None: return
         noSpeak = getServerConfigItem(self.server.shortname, 'nospeak')
-        interrupt = getServerConfigItem(self.server.shortname, 'speechInterrupt')
+        interrupt = getServerConfigItem(self.server.shortname, 'speechinterrupt')
         if interrupt is None: interrupt = True
         if noSpeak:
             if self.event.event in noSpeak.split('+'): return
