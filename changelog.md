@@ -7,3 +7,7 @@ Initial release.
 patch: fixes issue where in Dwcom would not recognize that speechInterrupt was set to false.
 patch: Makes speach output say left/joined channel root rather than left/joined channel the root channel.
 feat: Allows the use of logins and logouts txt files to create random login and logout messages.
+
+# V1.1.1
+
+patch: Fixes error in fileRandomizer that was caused by the improper use of file read/write flags.

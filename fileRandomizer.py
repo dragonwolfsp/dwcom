@@ -10,7 +10,7 @@ cache = {}
 def getRandomLine(filePath: str):
     if filePath in cache: return choice(cache[filePath])
     if not exists(filePath): raise FileNotFoundError(f'the file {filePath} could not be found on the system.')
-    with open(abspath(filePath), 'w') as f:
+    with open(abspath(filePath), 'r') as f:
         lines = f.readlines()
         cache[filePath] = lines
         return choice(lines)    
