@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "accessible-output3>=0.1.2",
+    "cyal>=0.4.5",
     "notify-py>=0.3.43",
     "ntfpy>=0.0.12",
     "pyprowl>=3.0.1",
