@@ -11,3 +11,7 @@ feat: Allows the use of logins and logouts txt files to create random login and 
 # V1.1.1
 
 patch: Fixes error in fileRandomizer that was caused by the improper use of file read/write flags.
+
+# V1.2.0
+
+feat: Sound playback now uses cyal and soundfile, which should resolve any prier issues with playing sounds.

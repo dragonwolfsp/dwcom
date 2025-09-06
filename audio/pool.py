@@ -9,7 +9,7 @@ class Pool:
 	def __init__(self, context: cyal.context, path: str):
 		self.context=context
 		self.cache={}
-		elif not os.path.isdir(path):
+		if not os.path.isdir(path):
 			raise ValueError(f"{path} is not a directory.")
 		self.path=path
 		if not self.path.endswith("/"): self.path+="/"

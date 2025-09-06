@@ -4,17 +4,17 @@ The trigger class for dwcom
 
 
 import os
-from rpaudio import AudioChannel, AudioSink
+from soundfile import available_formats
 from trigger_cc import TriggerBase
 from conf import conf
 from notifiers import sendSystemNotification, sendProwlNotification, ntfyNotifier
 from speech import Speech
 from logger import getServerLogger
 from fileRandomizer import getRandomLine
+from audio.manager import Manager as AudioManager
 
 serverConfigs = conf.servers()
-audioChannnel = AudioChannel()
-audioChannnel.auto_consume = True
+audioManager = AudioManager('sounds')
 
 def getServerConfigItem(serverName: str, itemName: str):
     try:
@@ -289,23 +289,20 @@ class Trigger(TriggerBase):
         else:
             if self.event.event in sounds: sound = sounds[self.event.event]
             else: return
-        for filetype in ('wav', 'flac', 'mp3'):
-            fullSoundPath = f'sounds/{soundPack}/{sound}.{filetype}'
-            if os.path.exists(fullSoundPath): break
+        for filetype in available_formats():
+            fullSoundPath = f'{soundPack}/{sound}.{filetype.lower()}'
+            if os.path.exists('sounds/'+fullSoundPath): break
             fullSoundPath = None
         playerType = getServerConfigItem(self.server.shortname, 'playbacktype')
         if playerType is None: playerType = 'overlapping'
-        sink = AudioSink().load_audio(os.path.abspath(fullSoundPath))
         volume = getServerConfigItem(self.server.shortname, 'soundVolume')
-        volume = volume/100 if volume is not None else 1.0
-        sink.set_volume(volume)
+        if volume is  None: volume = 100
         match playerType.lower():
             case 'onebyone':
-                audioChannnel.push(sink)
+                audioManager.play(fullSoundPath, 2)
             case 'interrupting':
-                audioChannnel.drop_current_audio()
-                audioChannnel.push(sink)
+                audioManager.play(fullSoundPath, 1)
             case 'overlapping':
-                sink.play()
+                audioManager.play(fullSoundPath, 0)
             case _:
                 raise ValueError(f'Failed to play sound:\n unsupported playback type {playerType}')

@@ -11,6 +11,7 @@ dependencies = [
     "ntfpy>=0.0.12",
     "pyprowl>=3.0.1",
     "rpaudio>=0.0.18",
+    "soundfile>=0.13.1",
 ]
 
 
