@@ -335,7 +335,3 @@ By default:
 
 * **Windows COM Errors**  
   On Windows systems, `COM` errors may sometimes occur when attempting to use speech output.
-
-* **User Type Collection Failures**  
-  In some cases, collecting user type information fails, resulting in a traceback.  
-  This typically occurs when users are already logged into a server before the console connects, and then log out after the console has connected. This issue is likely related to the way the cache is updated.

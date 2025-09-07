@@ -183,6 +183,9 @@ class Trigger(TriggerBase):
         self.speak(self.prittyEvent)
         if self.event.event in ('loggedin', 'loggedout', 'messagedeliver'): self.notify()
         self.logEvent()
+        self.handleCache()
+
+
 
     def speak(self, message):
         doSpeak = config.get(self.server.shortname, 'speech')
@@ -288,3 +291,18 @@ class Trigger(TriggerBase):
                 audioManager.play(fullSoundPath, 0)
             case _:
                 raise ValueError(f'Failed to play sound:\n unsupported playback type {playerType}')
+
+    def handleCache(self):
+        if self.event.event == 'loggedout':
+            if not self.server.shortname in serverCaches: return
+            if not 'users' in serverCaches[self.server.shortname]: return
+            if not self.event.parms.userid in serverCaches[self.server.shortname]['users']: return
+            serverCaches[self.server.shortname]['users'].pop(self.event.parms.userid)
+        if self.event.event == 'loggedin':
+            userName = self.server.users[self.event.parms.userid].get('username') or ""
+            nickname = self.server.users[self.event.parms.userid].get('nickname') or ""
+            admin = True if self.server.users[self.event.parms.userid].usertype == '2' else False
+            userInfo = {'userName': userName, 'nickname': nickname, 'admin': admin}
+            if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'users': {self.event.parms.userid: userInfo}}
+            elif  not 'users' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['users'] = {self.event.parms.userid: userInfo}
+            else: serverCaches[self.server.shortname]['users'][self.event.parms.userid] = userInfo
