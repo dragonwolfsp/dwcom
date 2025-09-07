@@ -58,7 +58,7 @@ def getUserInfo(server, userid):
     else:
         if  not 'users' in serverCaches[server.shortname]: serverCaches[server.shortname]['users'] = {userid: userInfo}
         else: serverCaches[server.shortname]['users'][userid] = userInfo
-    return userInfo
+    return serverCaches[server.shortname]['users'][userid]
 
 def prittifyName(userid, userinfo):
     name = ''
@@ -106,6 +106,7 @@ def prittifyEvent(server, event):
             output += f' {userTypeString} {prittyName} left channel {channelName}'
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
+            nickname = event.parms.nickname
             statusMode = event.parms.statusmode
             if statusMode in ('0', '4096', '256'):
                 statusMode = 'available'
@@ -117,8 +118,13 @@ def prittifyEvent(server, event):
                 statusMode = 'streaming media'
             else:
                 statusMode = f'unknown status{statusMode}'
-            output += f'{prittyName} - {statusMode}'
-            if statusMSG: output += f' - {statusMSG}'
+            output += f'{prittyName} -'
+            if userinfo.get('statusmode', 0) != event.parms.statusmode:
+                output += f' Status set to {statusMode}.'
+            if userinfo.get('statusmsg', '') != statusMSG:
+                output += f' Status message set to {event.parms.statusmsg}.'
+            if userinfo['nickname'] != nickname:
+                output += f' Nickname set to {nickname}.'
         case 'addfile':         
             fileName = event.parms.filename if 'filename' in event.parms else 'unknown file'
             owner = event.parms.owner
@@ -310,3 +316,7 @@ class Trigger(TriggerBase):
             if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'users': {self.event.parms.userid: userInfo}}
             elif  not 'users' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['users'] = {self.event.parms.userid: userInfo}
             else: serverCaches[self.server.shortname]['users'][self.event.parms.userid] = userInfo
+        if self.event.event == 'updateuser':
+            serverCaches[self.server.shortname]['users'][self.event.parms.userid]['nickname'] = self.event.parms.nickname
+            serverCaches[self.server.shortname]['users'][self.event.parms.userid]['statusmode'] = self.event.parms.statusmode
+            serverCaches[self.server.shortname]['users'][self.event.parms.userid]['statusmsg'] = self.event.parms.statusmsg
