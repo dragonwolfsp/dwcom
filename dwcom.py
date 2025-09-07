@@ -6,45 +6,27 @@ The trigger class for dwcom
 import os
 from soundfile import available_formats
 from trigger_cc import TriggerBase
-from conf import conf
 from notifiers import sendSystemNotification, sendProwlNotification, ntfyNotifier
 from speech import Speech
 from logger import getServerLogger
 from fileRandomizer import getRandomLine
 from audio.manager import Manager as AudioManager
+from config import Config
 
-serverConfigs = conf.servers()
 audioManager = AudioManager('sounds')
-
-def getServerConfigItem(serverName: str, itemName: str):
-    try:
-        serverConfig = serverConfigs[serverName]
-    except ValueError as e:
-        print(e)
-        return None
-    try:
-        return convertConfigValue(serverConfig[itemName])
-    except KeyError:
-        return None
-
-def convertConfigValue(configValue: str):
-    if configValue.isnumeric() and configValue != '1' and configValue != '0': return float(configValue)
-    match configValue.lower():
-        case 'y' | 'yes' | '1' | 'true': return True
-        case 'n' | 'no' | '0' | 'false': return False
-        case _: return configValue
+config = Config()
 
 serverCaches = {}
 
 def getServerSpeaker(serverName: str):
     if serverName in serverCaches:
         if 'speaker' in serverCaches[serverName]: return serverCaches[serverName]['speaker']
-    outputModule = getServerConfigItem(serverName, 'speechdmodule')
-    rate= getServerConfigItem(serverName, 'speechrate')
-    volume = getServerConfigItem(serverName, 'speechvolume')
-    voice = getServerConfigItem(serverName, 'speechvoice')
-    pitch = getServerConfigItem(serverName, 'speechpitch')
-    speakerType = getServerConfigItem(serverName, 'speechengine')
+    outputModule = config.get(serverName, 'speechdmodule')
+    rate= config.get(serverName, 'speechrate')
+    volume = config.get(serverName, 'speechvolume')
+    voice = config.get(serverName, 'speechvoice')
+    pitch = config.get(serverName, 'speechpitch')
+    speakerType = config.get(serverName, 'speechengine')
     kwargs = {}
     if outputModule is not None: kwargs['outputModule'] = outputModule
     if rate is not None: kwargs['rate'] = rate
@@ -203,10 +185,10 @@ class Trigger(TriggerBase):
         self.logEvent()
 
     def speak(self, message):
-        doSpeak = getServerConfigItem(self.server.shortname, 'speech')
+        doSpeak = config.get(self.server.shortname, 'speech')
         if doSpeak != True and doSpeak is not None: return
-        noSpeak = getServerConfigItem(self.server.shortname, 'nospeak')
-        interrupt = getServerConfigItem(self.server.shortname, 'speechinterrupt')
+        noSpeak = config.get(self.server.shortname, 'nospeak')
+        interrupt = config.get(self.server.shortname, 'speechinterrupt')
         if interrupt is None: interrupt = True
         if noSpeak:
             if self.event.event in noSpeak.split('+'): return
@@ -214,12 +196,12 @@ class Trigger(TriggerBase):
         speaker.both(message, interrupt = interrupt)
 
     def notify(self):
-        if self.event.event in ('loggedin', 'loggedout') and getServerConfigItem(self.server.shortname, 'notifyloginout') == False: return
-        elif self.event.event == 'messagedeliver' and getServerConfigItem(self.server.shortname, 'notifymessage') == False: return
+        if self.event.event in ('loggedin', 'loggedout') and config.get(self.server.shortname, 'notifyloginout') == False: return
+        elif self.event.event == 'messagedeliver' and config.get(self.server.shortname, 'notifymessage') == False: return
         title = self.makeTitle()
-        if getServerConfigItem(self.server.shortname, 'systemnotify') == True: sendSystemNotification(title, self.prittyEvent)
-        if getServerConfigItem(self.server.shortname, 'ntfy') == True: self.ntfyNotify(title, self.prittyEvent)
-        if getServerConfigItem(self.server.shortname, 'prowl') == True: self.prowlNotify(title, self.prittyEvent)
+        if config.get(self.server.shortname, 'systemnotify') == True: sendSystemNotification(title, self.prittyEvent)
+        if config.get(self.server.shortname, 'ntfy') == True: self.ntfyNotify(title, self.prittyEvent)
+        if config.get(self.server.shortname, 'prowl') == True: self.prowlNotify(title, self.prittyEvent)
 
     def makeTitle(self):
         titles = {
@@ -236,34 +218,34 @@ class Trigger(TriggerBase):
         else: return titles[self.event.event] if self.event.event in titles else 'unknown event'
 
     def ntfyNotify(self, title: str, message: str):
-        serverUrl = getServerConfigItem(self.server.shortname, 'ntfyurl')
+        serverUrl = config.get(self.server.shortname, 'ntfyurl')
         if not serverUrl: serverUrl = 'https://ntfy.sh'
-        topic = getServerConfigItem(self.server.shortname, 'ntfytopic')
+        topic = config.get(self.server.shortname, 'ntfytopic')
         if not topic: raise NameError(f'ntfytopic not found in server config for {self.server.shortname}')
-        user = getServerConfigItem(self.server.shortname, 'ntfyuser')
-        password = getServerConfigItem(self.server.shortname, 'ntfypassword')
+        user = config.get(self.server.shortname, 'ntfyuser')
+        password = config.get(self.server.shortname, 'ntfypassword')
         notifyer = ntfyNotifier(serverUrl, topic, user, password)
         notifyer.sendNotification(title, message)
 
     def prowlNotify(self, title: str, message: str):
-        prowlKey = getServerConfigItem(self.server.shortname, 'prowlkey')
+        prowlKey = config.get(self.server.shortname, 'prowlkey')
         if not prowlKey: raise NameError(f'prowlkey not found in config for {self.server.shortname}')
         sendProwlNotification(prowlKey, title, message)
 
     def logEvent(self):
-        log = getServerConfigItem(self.server.shortname, 'log')
+        log = config.get(self.server.shortname, 'log')
         if log != True and log is not None: return
-        maxSize = getServerConfigItem(self.server.shortname, 'maxlogsize') 
+        maxSize = config.get(self.server.shortname, 'maxlogsize') 
         maxSize = maxSize * 1024 * 1024 if maxSize is not None else 4 * 1024 * 1024
-        maxFiles = getServerConfigItem(self.server.shortname, 'maxlogfiles')
+        maxFiles = config.get(self.server.shortname, 'maxlogfiles')
         if maxFiles is None: maxFiles = 5
         logger = getServerLogger(self.server.shortname, 'logs', maxSize, maxFiles)
         logger.info(self.prittyEvent)
 
     def playSound(self):
-        playSounds = getServerConfigItem(self.server.shortname, 'sounds')
+        playSounds = config.get(self.server.shortname, 'sounds')
         if playSounds != True and  playSounds is not  None: return
-        soundPack = getServerConfigItem(self.server.shortname, 'soundpack')
+        soundPack = config.get(self.server.shortname, 'soundpack')
         if soundPack is None: soundPack = 'default'
         sounds = {
             'loggedin': 'in',
@@ -293,9 +275,9 @@ class Trigger(TriggerBase):
             fullSoundPath = f'{soundPack}/{sound}.{filetype.lower()}'
             if os.path.exists('sounds/'+fullSoundPath): break
             fullSoundPath = None
-        playerType = getServerConfigItem(self.server.shortname, 'playbacktype')
+        playerType = config.get(self.server.shortname, 'playbacktype')
         if playerType is None: playerType = 'overlapping'
-        volume = getServerConfigItem(self.server.shortname, 'soundVolume')
+        volume = config.get(self.server.shortname, 'soundVolume')
         if volume is  None: volume = 100
         match playerType.lower():
             case 'onebyone':

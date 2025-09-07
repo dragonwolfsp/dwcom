@@ -12,6 +12,7 @@ dependencies = [
     "pyprowl>=3.0.1",
     "rpaudio>=0.0.18",
     "soundfile>=0.13.1",
+    "watchdog>=6.0.0",
 ]
 
 
