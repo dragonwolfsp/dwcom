@@ -18,3 +18,4 @@ feat: Dwcom now watches for config changes, the user is no longer required to re
 patch: improoves cacheing to avoide issues with left over user ids. This should also remove the issue of errors about user type collection.
 feat: Dwcom now includes a noSound config option, which behaves the same as  noSpeak.
 feat: Status and nickname change messages are now more concise and useful.
+Feat: The names of channels that are deleted will now be spoken, thanks to yet more caching.

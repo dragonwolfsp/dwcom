@@ -140,7 +140,8 @@ def prittifyEvent(server, event):
             channelname = server.channelname(event.parms.chanid)
             output += f'channel {channelname} created'
         case 'removechannel':
-            output += f'channel with id {event.parms.chanid} deleted'
+            channelName = serverCaches[server.shortname]['channels'][event.parms.chanid] if event.parms.chanid in serverCaches[server.shortname]['channels'] else f'with id {event.parms.chanid}'
+            output += f'channel {channelName} deleted'
         case 'updatechannel':
             channelname = server.channelname(event.parms.chanid)
             output += f'channel {channelname} updated'
@@ -173,26 +174,24 @@ def prittifyEvent(server, event):
 class Trigger(TriggerBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.doTrigger = True
-        if not self.doTrigger: return
         # Do not process events from a server that is not logged in
         if not self.server.loggedIn: return
         # do not process events if they are from hour user.
         if 'userid' in self.event.parms and self.server.me.userid == self.event.parms.userid: return
+        # ensure caches will be initialized after login.
+        if self.event.event == 'ok':
+            self.initializeCache()
         # do not process events that are caused by commands. This ensures that events like kicked and banned actualy work properly.
         if self.event.event in ('ok', 'left', 'joined', 'error'): return
         # Do not process spammy typing notifications.
         if self.event.event =='messagedeliver':
             if self.event.parms.type == '4' and self.event.parms.content.startswith('typing'): return
         self.prittyEvent = prittifyEvent(self.server, self.event)
-
         self.playSound()    
         self.speak(self.prittyEvent)
         if self.event.event in ('loggedin', 'loggedout', 'messagedeliver'): self.notify()
         self.logEvent()
         self.handleCache()
-
-
 
     def speak(self, message):
         doSpeak = config.get(self.server.shortname, 'speech')
@@ -288,6 +287,7 @@ class Trigger(TriggerBase):
             fullSoundPath = f'{soundPack}/{sound}.{filetype.lower()}'
             if os.path.exists('sounds/'+fullSoundPath): break
             fullSoundPath = None
+        if fullSoundPath is None: return
         playerType = config.get(self.server.shortname, 'playbacktype')
         if playerType is None: playerType = 'overlapping'
         volume = config.get(self.server.shortname, 'soundVolume')
@@ -320,3 +320,24 @@ class Trigger(TriggerBase):
             serverCaches[self.server.shortname]['users'][self.event.parms.userid]['nickname'] = self.event.parms.nickname
             serverCaches[self.server.shortname]['users'][self.event.parms.userid]['statusmode'] = self.event.parms.statusmode
             serverCaches[self.server.shortname]['users'][self.event.parms.userid]['statusmsg'] = self.event.parms.statusmsg
+        if self.event.event == 'addchannel':
+            channelName = self.server.channelname(self.event.parms.chanid)
+            if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'channels':{self.event.parms.chanid: channelName}}
+            elif  not 'channels' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['channels'] = {self.event.parms.chanid: channelName}
+        if self.event.event == 'updatechannel':
+            channelName = self.server.channelname(self.event.parms.chanid)
+            if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'channels':{self.event.parms.chanid: channelName}}
+            elif  not 'channels' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['channels'] = {self.event.parms.chanid: channelName}
+            else: serverCaches[self.server.shortname]['channels'][self.event.parms.chanid] = channelName
+
+    def initializeCache(self):
+        if self.server.shortname  not in serverCaches: serverCaches[self.server.shortname] = {'users': {}, 'channels': {}}
+        print('ok')
+        for u in self.server.users:
+            u = self.server.users[u]
+            userInfo = {'username': u['username'], 'usertype': u['usertype']}
+            userInfo['nickname'] = prittifyName(u['userid'], userInfo)
+            serverCaches[u['userid']] = userInfo
+        for c in self.server.channels:
+            c = self.server.channels[c]
+            serverCaches[self.server.shortname]['channels'][c['chanid']] = self.server.channelname(c['chanid'])
