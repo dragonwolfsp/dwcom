@@ -12,24 +12,17 @@ Before installing the plugin, you must install its dependencies.
 The instructions below assume a standard `pip` installation. If you are using a virtual environment, Anaconda, or another Python environment, adapt the commands accordingly.
 
 ```bash
-pip install accessible_output3 rpaudio ntfpy pyprowl notify_py
+pip install accessible_output3 cyal soundfile ntfpy pyprowl notify_py
 ```
 
 ---
 
 ### macOS-Specific Requirements
 
-On macOS, `rpaudio` requires `gettext`. The easiest way to install it is via [Homebrew](https://brew.sh).
+On macOS, `pyobjc` and `appkit` are required for NSSpeech support. You may also need [Homebrew](https://brew.sh) installed for certain dependencies.
 
 1. Install Homebrew (see [Homebrew homepage](https://brew.sh) for instructions).
-2. Install `gettext` and link it:
-
-```bash
-brew install gettext
-brew link gettext --force
-```
-
-3. Install `pyobjc` and `appkit` for NSSpeech support:
+2. Install `pyobjc` and `appkit` for NSSpeech support:
 
 ```bash
 pip install pyobjc
@@ -41,7 +34,7 @@ pip install appkit
 
 #### If Installation Fails
 
-If `pyobjc` or `appkit` fails to install, try installing additional dependencies:
+If `pyobjc` or `appkit` fails to install, try installing additional build dependencies with Homebrew:
 
 ```bash
 brew install cmake
@@ -64,44 +57,41 @@ Without this change, importing `appkit` will fail.
 
 ---
 
+Got it 👍 — here’s a smoother rewrite of the Linux section so it matches the tone and flow of the macOS one:
+
+---
+
 ### GNU/Linux-Specific Requirements
 
-On Linux, `rpaudio` requires `libasound2-dev`.
+On Linux, **speech-dispatcher** is required to enable speech output.
+
+1. Install `speech-dispatcher` (package names vary by distribution):
 
 * **Debian/Ubuntu-based:**
 
 ```bash
-sudo apt install pkg-config libasound2-dev
+sudo apt install speech-dispatcher
 ```
-
 * **Red Hat-based:**
 
 ```bash
-sudo yum install pkg-config alsa-lib-devel
+sudo yum install speech-dispatcher
 ```
-
 * **Arch-based:**
 
 ```bash
-sudo pacman -S alsa-lib pkgconf
+sudo pacman -S speech-dispatcher
 ```
 
-#### Speech Support
-
-To enable speech output, install **speech-dispatcher**:
-
-```bash
-# Debian/Ubuntu example
-sudo apt install speech-dispatcher
-```
-
-Package names may vary depending on the distribution.
-Common variations include:
+2. Depending on your distribution, the package may be named differently:
 
 * `speechd`
 * `lib-speech-dispatcher`
 
-You may also try `python-espeak` or `python-espeak-ng` if available in your distribution.
+3. If you want, you can also install python espeak backends.
+
+* `python-espeak`
+* `python-espeak-ng`
 
 ---
 
