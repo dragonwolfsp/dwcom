@@ -231,7 +231,7 @@ If the files are missing or empty, dwcom falls back to the default messages:
 **Example (`logins.txt`):**
 
 ```
- runeports in with a flash of golden light.
+runeports in with a flash of golden light.
 soars in from on high
 Charges in, blade held high
 ```
@@ -262,6 +262,7 @@ By default:
 | `soundPack`     | string   | Name of the sound pack. Default: `default`. |
 | `soundVolume`   | number (0–100) | Playback volume. Default: `100`. |
 | `playbackType`  | string   | How sounds are played. Options: `overlapping`, `interrupting`, `oneByOne`. Default: `overlapping`. |
+| `noSound`       | string   | Prevents certain events from playing sounds. Usage is the same as `noSpeak` |
 
 ---
 

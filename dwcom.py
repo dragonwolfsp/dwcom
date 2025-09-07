@@ -179,6 +179,7 @@ class Trigger(TriggerBase):
         if self.event.event =='messagedeliver':
             if self.event.parms.type == '4' and self.event.parms.content.startswith('typing'): return
         self.prittyEvent = prittifyEvent(self.server, self.event)
+
         self.playSound()    
         self.speak(self.prittyEvent)
         if self.event.event in ('loggedin', 'loggedout', 'messagedeliver'): self.notify()
@@ -248,6 +249,9 @@ class Trigger(TriggerBase):
     def playSound(self):
         playSounds = config.get(self.server.shortname, 'sounds')
         if playSounds != True and  playSounds is not  None: return
+        noSound = config.get(self.server.shortname, 'nosound')
+        if noSound is not None:
+            if self.event.event in noSound.split('+'): return
         soundPack = config.get(self.server.shortname, 'soundpack')
         if soundPack is None: soundPack = 'default'
         sounds = {
@@ -293,7 +297,7 @@ class Trigger(TriggerBase):
                 raise ValueError(f'Failed to play sound:\n unsupported playback type {playerType}')
 
     def handleCache(self):
-        if self.event.event == 'loggedout':
+        if self.event.event == 'loggedout': 
             if not self.server.shortname in serverCaches: return
             if not 'users' in serverCaches[self.server.shortname]: return
             if not self.event.parms.userid in serverCaches[self.server.shortname]['users']: return
