@@ -4,47 +4,29 @@ The trigger class for dwcom
 
 
 import os
-from rpaudio import AudioChannel, AudioSink
+from soundfile import available_formats
 from trigger_cc import TriggerBase
-from conf import conf
 from notifiers import sendSystemNotification, sendProwlNotification, ntfyNotifier
 from speech import Speech
 from logger import getServerLogger
 from fileRandomizer import getRandomLine
+from audio.manager import Manager as AudioManager
+from config import Config
 
-serverConfigs = conf.servers()
-audioChannnel = AudioChannel()
-audioChannnel.auto_consume = True
-
-def getServerConfigItem(serverName: str, itemName: str):
-    try:
-        serverConfig = serverConfigs[serverName]
-    except ValueError as e:
-        print(e)
-        return None
-    try:
-        return convertConfigValue(serverConfig[itemName])
-    except KeyError:
-        return None
-
-def convertConfigValue(configValue: str):
-    if configValue.isnumeric() and configValue != '1' and configValue != '0': return float(configValue)
-    match configValue.lower():
-        case 'y' | 'yes' | '1' | 'true': return True
-        case 'n' | 'no' | '0' | 'false': return False
-        case _: return configValue
+audioManager = AudioManager('sounds')
+config = Config()
 
 serverCaches = {}
 
 def getServerSpeaker(serverName: str):
     if serverName in serverCaches:
         if 'speaker' in serverCaches[serverName]: return serverCaches[serverName]['speaker']
-    outputModule = getServerConfigItem(serverName, 'speechdmodule')
-    rate= getServerConfigItem(serverName, 'speechrate')
-    volume = getServerConfigItem(serverName, 'speechvolume')
-    voice = getServerConfigItem(serverName, 'speechvoice')
-    pitch = getServerConfigItem(serverName, 'speechpitch')
-    speakerType = getServerConfigItem(serverName, 'speechengine')
+    outputModule = config.get(serverName, 'speechdmodule')
+    rate= config.get(serverName, 'speechrate')
+    volume = config.get(serverName, 'speechvolume')
+    voice = config.get(serverName, 'speechvoice')
+    pitch = config.get(serverName, 'speechpitch')
+    speakerType = config.get(serverName, 'speechengine')
     kwargs = {}
     if outputModule is not None: kwargs['outputModule'] = outputModule
     if rate is not None: kwargs['rate'] = rate
@@ -76,7 +58,7 @@ def getUserInfo(server, userid):
     else:
         if  not 'users' in serverCaches[server.shortname]: serverCaches[server.shortname]['users'] = {userid: userInfo}
         else: serverCaches[server.shortname]['users'][userid] = userInfo
-    return userInfo
+    return serverCaches[server.shortname]['users'][userid]
 
 def prittifyName(userid, userinfo):
     name = ''
@@ -124,6 +106,7 @@ def prittifyEvent(server, event):
             output += f' {userTypeString} {prittyName} left channel {channelName}'
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
+            nickname = event.parms.nickname
             statusMode = event.parms.statusmode
             if statusMode in ('0', '4096', '256'):
                 statusMode = 'available'
@@ -135,8 +118,13 @@ def prittifyEvent(server, event):
                 statusMode = 'streaming media'
             else:
                 statusMode = f'unknown status{statusMode}'
-            output += f'{prittyName} - {statusMode}'
-            if statusMSG: output += f' - {statusMSG}'
+            output += f'{prittyName} -'
+            if userinfo.get('statusmode', 0) != event.parms.statusmode:
+                output += f' Status set to {statusMode}.'
+            if userinfo.get('statusmsg', '') != statusMSG:
+                output += f' Status message set to {event.parms.statusmsg}.'
+            if userinfo['nickname'] != nickname:
+                output += f' Nickname set to {nickname}.'
         case 'addfile':         
             fileName = event.parms.filename if 'filename' in event.parms else 'unknown file'
             owner = event.parms.owner
@@ -152,7 +140,8 @@ def prittifyEvent(server, event):
             channelname = server.channelname(event.parms.chanid)
             output += f'channel {channelname} created'
         case 'removechannel':
-            output += f'channel with id {event.parms.chanid} deleted'
+            channelName = serverCaches[server.shortname]['channels'][event.parms.chanid] if event.parms.chanid in serverCaches[server.shortname]['channels'] else f'with id {event.parms.chanid}'
+            output += f'channel {channelName} deleted'
         case 'updatechannel':
             channelname = server.channelname(event.parms.chanid)
             output += f'channel {channelname} updated'
@@ -185,12 +174,13 @@ def prittifyEvent(server, event):
 class Trigger(TriggerBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.doTrigger = True
-        if not self.doTrigger: return
         # Do not process events from a server that is not logged in
         if not self.server.loggedIn: return
         # do not process events if they are from hour user.
         if 'userid' in self.event.parms and self.server.me.userid == self.event.parms.userid: return
+        # ensure caches will be initialized after login.
+        if self.event.event == 'ok':
+            self.initializeCache()
         # do not process events that are caused by commands. This ensures that events like kicked and banned actualy work properly.
         if self.event.event in ('ok', 'left', 'joined', 'error'): return
         # Do not process spammy typing notifications.
@@ -201,12 +191,13 @@ class Trigger(TriggerBase):
         self.speak(self.prittyEvent)
         if self.event.event in ('loggedin', 'loggedout', 'messagedeliver'): self.notify()
         self.logEvent()
+        self.handleCache()
 
     def speak(self, message):
-        doSpeak = getServerConfigItem(self.server.shortname, 'speech')
+        doSpeak = config.get(self.server.shortname, 'speech')
         if doSpeak != True and doSpeak is not None: return
-        noSpeak = getServerConfigItem(self.server.shortname, 'nospeak')
-        interrupt = getServerConfigItem(self.server.shortname, 'speechinterrupt')
+        noSpeak = config.get(self.server.shortname, 'nospeak')
+        interrupt = config.get(self.server.shortname, 'speechinterrupt')
         if interrupt is None: interrupt = True
         if noSpeak:
             if self.event.event in noSpeak.split('+'): return
@@ -214,12 +205,12 @@ class Trigger(TriggerBase):
         speaker.both(message, interrupt = interrupt)
 
     def notify(self):
-        if self.event.event in ('loggedin', 'loggedout') and getServerConfigItem(self.server.shortname, 'notifyloginout') == False: return
-        elif self.event.event == 'messagedeliver' and getServerConfigItem(self.server.shortname, 'notifymessage') == False: return
+        if self.event.event in ('loggedin', 'loggedout') and config.get(self.server.shortname, 'notifyloginout') == False: return
+        elif self.event.event == 'messagedeliver' and config.get(self.server.shortname, 'notifymessage') == False: return
         title = self.makeTitle()
-        if getServerConfigItem(self.server.shortname, 'systemnotify') == True: sendSystemNotification(title, self.prittyEvent)
-        if getServerConfigItem(self.server.shortname, 'ntfy') == True: self.ntfyNotify(title, self.prittyEvent)
-        if getServerConfigItem(self.server.shortname, 'prowl') == True: self.prowlNotify(title, self.prittyEvent)
+        if config.get(self.server.shortname, 'systemnotify') == True: sendSystemNotification(title, self.prittyEvent)
+        if config.get(self.server.shortname, 'ntfy') == True: self.ntfyNotify(title, self.prittyEvent)
+        if config.get(self.server.shortname, 'prowl') == True: self.prowlNotify(title, self.prittyEvent)
 
     def makeTitle(self):
         titles = {
@@ -236,34 +227,37 @@ class Trigger(TriggerBase):
         else: return titles[self.event.event] if self.event.event in titles else 'unknown event'
 
     def ntfyNotify(self, title: str, message: str):
-        serverUrl = getServerConfigItem(self.server.shortname, 'ntfyurl')
+        serverUrl = config.get(self.server.shortname, 'ntfyurl')
         if not serverUrl: serverUrl = 'https://ntfy.sh'
-        topic = getServerConfigItem(self.server.shortname, 'ntfytopic')
+        topic = config.get(self.server.shortname, 'ntfytopic')
         if not topic: raise NameError(f'ntfytopic not found in server config for {self.server.shortname}')
-        user = getServerConfigItem(self.server.shortname, 'ntfyuser')
-        password = getServerConfigItem(self.server.shortname, 'ntfypassword')
+        user = config.get(self.server.shortname, 'ntfyuser')
+        password = config.get(self.server.shortname, 'ntfypassword')
         notifyer = ntfyNotifier(serverUrl, topic, user, password)
         notifyer.sendNotification(title, message)
 
     def prowlNotify(self, title: str, message: str):
-        prowlKey = getServerConfigItem(self.server.shortname, 'prowlkey')
+        prowlKey = config.get(self.server.shortname, 'prowlkey')
         if not prowlKey: raise NameError(f'prowlkey not found in config for {self.server.shortname}')
         sendProwlNotification(prowlKey, title, message)
 
     def logEvent(self):
-        log = getServerConfigItem(self.server.shortname, 'log')
+        log = config.get(self.server.shortname, 'log')
         if log != True and log is not None: return
-        maxSize = getServerConfigItem(self.server.shortname, 'maxlogsize') 
+        maxSize = config.get(self.server.shortname, 'maxlogsize') 
         maxSize = maxSize * 1024 * 1024 if maxSize is not None else 4 * 1024 * 1024
-        maxFiles = getServerConfigItem(self.server.shortname, 'maxlogfiles')
+        maxFiles = config.get(self.server.shortname, 'maxlogfiles')
         if maxFiles is None: maxFiles = 5
         logger = getServerLogger(self.server.shortname, 'logs', maxSize, maxFiles)
         logger.info(self.prittyEvent)
 
     def playSound(self):
-        playSounds = getServerConfigItem(self.server.shortname, 'sounds')
+        playSounds = config.get(self.server.shortname, 'sounds')
         if playSounds != True and  playSounds is not  None: return
-        soundPack = getServerConfigItem(self.server.shortname, 'soundpack')
+        noSound = config.get(self.server.shortname, 'nosound')
+        if noSound is not None:
+            if self.event.event in noSound.split('+'): return
+        soundPack = config.get(self.server.shortname, 'soundpack')
         if soundPack is None: soundPack = 'default'
         sounds = {
             'loggedin': 'in',
@@ -289,23 +283,61 @@ class Trigger(TriggerBase):
         else:
             if self.event.event in sounds: sound = sounds[self.event.event]
             else: return
-        for filetype in ('wav', 'flac', 'mp3'):
-            fullSoundPath = f'sounds/{soundPack}/{sound}.{filetype}'
-            if os.path.exists(fullSoundPath): break
+        for filetype in available_formats():
+            fullSoundPath = f'{soundPack}/{sound}.{filetype.lower()}'
+            if os.path.exists('sounds/'+fullSoundPath): break
             fullSoundPath = None
-        playerType = getServerConfigItem(self.server.shortname, 'playbacktype')
+        if fullSoundPath is None: return
+        playerType = config.get(self.server.shortname, 'playbacktype')
         if playerType is None: playerType = 'overlapping'
-        sink = AudioSink().load_audio(os.path.abspath(fullSoundPath))
-        volume = getServerConfigItem(self.server.shortname, 'soundVolume')
-        volume = volume/100 if volume is not None else 1.0
-        sink.set_volume(volume)
+        volume = config.get(self.server.shortname, 'soundVolume')
+        if volume is  None: volume = 100
         match playerType.lower():
             case 'onebyone':
-                audioChannnel.push(sink)
+                audioManager.play(fullSoundPath, 2)
             case 'interrupting':
-                audioChannnel.drop_current_audio()
-                audioChannnel.push(sink)
+                audioManager.play(fullSoundPath, 1)
             case 'overlapping':
-                sink.play()
+                audioManager.play(fullSoundPath, 0)
             case _:
                 raise ValueError(f'Failed to play sound:\n unsupported playback type {playerType}')
+
+    def handleCache(self):
+        if self.event.event == 'loggedout': 
+            if not self.server.shortname in serverCaches: return
+            if not 'users' in serverCaches[self.server.shortname]: return
+            if not self.event.parms.userid in serverCaches[self.server.shortname]['users']: return
+            serverCaches[self.server.shortname]['users'].pop(self.event.parms.userid)
+        if self.event.event == 'loggedin':
+            userName = self.server.users[self.event.parms.userid].get('username') or ""
+            nickname = self.server.users[self.event.parms.userid].get('nickname') or ""
+            admin = True if self.server.users[self.event.parms.userid].usertype == '2' else False
+            userInfo = {'userName': userName, 'nickname': nickname, 'admin': admin}
+            if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'users': {self.event.parms.userid: userInfo}}
+            elif  not 'users' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['users'] = {self.event.parms.userid: userInfo}
+            else: serverCaches[self.server.shortname]['users'][self.event.parms.userid] = userInfo
+        if self.event.event == 'updateuser':
+            serverCaches[self.server.shortname]['users'][self.event.parms.userid]['nickname'] = self.event.parms.nickname
+            serverCaches[self.server.shortname]['users'][self.event.parms.userid]['statusmode'] = self.event.parms.statusmode
+            serverCaches[self.server.shortname]['users'][self.event.parms.userid]['statusmsg'] = self.event.parms.statusmsg
+        if self.event.event == 'addchannel':
+            channelName = self.server.channelname(self.event.parms.chanid)
+            if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'channels':{self.event.parms.chanid: channelName}}
+            elif  not 'channels' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['channels'] = {self.event.parms.chanid: channelName}
+        if self.event.event == 'updatechannel':
+            channelName = self.server.channelname(self.event.parms.chanid)
+            if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'channels':{self.event.parms.chanid: channelName}}
+            elif  not 'channels' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['channels'] = {self.event.parms.chanid: channelName}
+            else: serverCaches[self.server.shortname]['channels'][self.event.parms.chanid] = channelName
+
+    def initializeCache(self):
+        if self.server.shortname  not in serverCaches: serverCaches[self.server.shortname] = {'users': {}, 'channels': {}}
+        print('ok')
+        for u in self.server.users:
+            u = self.server.users[u]
+            userInfo = {'username': u['username'], 'usertype': u['usertype']}
+            userInfo['nickname'] = prittifyName(u['userid'], userInfo)
+            serverCaches[u['userid']] = userInfo
+        for c in self.server.channels:
+            c = self.server.channels[c]
+            serverCaches[self.server.shortname]['channels'][c['chanid']] = self.server.channelname(c['chanid'])
