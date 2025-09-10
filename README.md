@@ -57,10 +57,6 @@ Without this change, importing `appkit` will fail.
 
 ---
 
-Got it 👍 — here’s a smoother rewrite of the Linux section so it matches the tone and flow of the macOS one:
-
----
-
 ### GNU/Linux-Specific Requirements
 
 On Linux, **speech-dispatcher** is required to enable speech output.
