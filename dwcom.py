@@ -289,7 +289,7 @@ class Trigger(TriggerBase):
             fullSoundPath = None
         if fullSoundPath is None: return
         playerType = config.get(self.server.shortname, 'playbacktype')
-        if playerType is None: playerType = 'overlapping'
+        if playerType is None: playerType = 'interrupting'
         volume = config.get(self.server.shortname, 'soundvolume')
         if volume is  None: volume = 100
         match playerType.lower():
