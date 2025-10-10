@@ -310,7 +310,7 @@ class Trigger(TriggerBase):
             serverCaches[self.server.shortname]['users'].pop(self.event.parms.userid)
         if self.event.event == 'loggedin':
             userName = self.server.users[self.event.parms.userid].get('username') or ""
-            nickname = self.server.users[self.event.parms.userid].get('nickname') or ""
+            nickname = self.server.users[self.event.parms.userid].get('nickname') or f'user{self.event.parms.userid}'
             admin = True if self.server.users[self.event.parms.userid].usertype == '2' else False
             userInfo = {'userName': userName, 'nickname': nickname, 'admin': admin}
             if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'users': {self.event.parms.userid: userInfo}}
@@ -324,19 +324,23 @@ class Trigger(TriggerBase):
             channelName = self.server.channelname(self.event.parms.chanid)
             if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'channels':{self.event.parms.chanid: channelName}}
             elif  not 'channels' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['channels'] = {self.event.parms.chanid: channelName}
+            else: serverCaches[self.server.shortname]['channels'] += {self.event.parms.chanid: channelName}
         if self.event.event == 'updatechannel':
             channelName = self.server.channelname(self.event.parms.chanid)
             if not self.server.shortname in serverCaches:         serverCaches[self.server.shortname] = {'channels':{self.event.parms.chanid: channelName}}
             elif  not 'channels' in serverCaches[self.server.shortname]: serverCaches[self.server.shortname]['channels'] = {self.event.parms.chanid: channelName}
             else: serverCaches[self.server.shortname]['channels'][self.event.parms.chanid] = channelName
+        if self.event.event == 'removechannel':
+            if not self.server.shortname in serverCaches: return
+            if  not 'channels' in serverCaches[self.server.shortname]: return
+            serverCaches[self.server.shortname]['channels'].pop(self.event.parms.chanid)
 
     def initializeCache(self):
         if self.server.shortname  not in serverCaches: serverCaches[self.server.shortname] = {'users': {}, 'channels': {}}
-        print('ok')
         for u in self.server.users:
             u = self.server.users[u]
             userInfo = {'username': u['username'], 'usertype': u['usertype']}
-            userInfo['nickname'] = prittifyName(u['userid'], userInfo)
+            userInfo['nickname'] = u['nickname'] if 'nickname' in u else f'user{u['userid']}'
             serverCaches[u['userid']] = userInfo
         for c in self.server.channels:
             c = self.server.channels[c]
