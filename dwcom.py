@@ -290,15 +290,15 @@ class Trigger(TriggerBase):
         if fullSoundPath is None: return
         playerType = config.get(self.server.shortname, 'playbacktype')
         if playerType is None: playerType = 'overlapping'
-        volume = config.get(self.server.shortname, 'soundVolume')
+        volume = config.get(self.server.shortname, 'soundvolume')
         if volume is  None: volume = 100
         match playerType.lower():
             case 'onebyone':
-                audioManager.play(fullSoundPath, 2)
+                audioManager.play(fullSoundPath, 2, gain = volume)
             case 'interrupting':
-                audioManager.play(fullSoundPath, 1)
+                audioManager.play(fullSoundPath, 1, gain = volume)
             case 'overlapping':
-                audioManager.play(fullSoundPath, 0)
+                audioManager.play(fullSoundPath, 0, gain = volume)
             case _:
                 raise ValueError(f'Failed to play sound:\n unsupported playback type {playerType}')
 
