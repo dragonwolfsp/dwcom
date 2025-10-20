@@ -99,11 +99,11 @@ def prittifyEvent(server, event):
         case 'adduser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
-            output += f'{userTypeString} {prittyName} joined channel {channelName}'
+            output += f'{prittyName} joined channel {channelName}'
         case 'removeuser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
-            output += f'{userTypeString} {prittyName} left channel {channelName}'
+            output += f'{prittyName} left channel {channelName}'
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
             nickname = event.parms.nickname
