@@ -99,11 +99,19 @@ def prittifyEvent(server, event):
         case 'adduser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
+<<<<<<< HEAD
             output += f'{prittyName} joined channel {channelName}'
         case 'removeuser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
             output += f'{prittyName} left channel {channelName}'
+=======
+            output += f'{userTypeString} {prittyName} joined channel {channelName}'
+        case 'removeuser':
+            channelName= server.channelname(event.parms.chanid)
+            channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
+            output += f'{userTypeString} {prittyName} left channel {channelName}'
+>>>>>>> 46fa6b8 (Formatting)
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
             nickname = event.parms.nickname
@@ -120,9 +128,9 @@ def prittifyEvent(server, event):
                 statusMode = f'unknown status{statusMode}'
             output += f'{prittyName} - '
             if userinfo.get('statusmode', 0) != event.parms.statusmode:
-                output += f'status {statusMode}.'
+                output += f'status {statusMode}. '
             if userinfo.get('statusmsg', '') != statusMSG:
-                output += f' Status message {event.parms.statusmsg}'
+                output += f'Status message {event.parms.statusmsg}'
             if userinfo['nickname'] != nickname:
                 output += f'Nickname set to {nickname}.'
         case 'addfile':         
