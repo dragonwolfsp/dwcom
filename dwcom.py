@@ -70,7 +70,7 @@ def prittifyName(userid, userinfo):
     return name
 
 def prittifyEvent(server, event):
-    output = f'{server.shortname} -'
+    output = f'{server.shortname} - '
     userid = None
     destuserid = None
     if     'userid' in event.parms:
@@ -91,25 +91,33 @@ def prittifyEvent(server, event):
         case 'loggedin':
             loginMessage = 'logged in'
             if os.path.exists('text/logins.txt'):  loginMessage = getRandomLine('text/logins.txt')
-            output += f' {userTypeString} {prittyName} {loginMessage}'
+            output += f'{userTypeString} {prittyName} {loginMessage}'
         case 'loggedout':
             logOutMessage = 'logged out'
             if os.path.exists('text/logouts.txt'):  logOutMessage = getRandomLine('text/logouts.txt')
-            output += f' {userTypeString} {prittyName} {logOutMessage}'
+            output += f'{userTypeString} {prittyName} {logOutMessage}'
         case 'adduser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
-            output += f' {userTypeString} {prittyName} joined channel {channelName}'
+<<<<<<< HEAD
+            output += f'{prittyName} joined channel {channelName}'
         case 'removeuser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
-            output += f' {userTypeString} {prittyName} left channel {channelName}'
+            output += f'{prittyName} left channel {channelName}'
+=======
+            output += f'{userTypeString} {prittyName} joined channel {channelName}'
+        case 'removeuser':
+            channelName= server.channelname(event.parms.chanid)
+            channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
+            output += f'{userTypeString} {prittyName} left channel {channelName}'
+>>>>>>> 46fa6b8 (Formatting)
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
             nickname = event.parms.nickname
             statusMode = event.parms.statusmode
             if statusMode in ('0', '4096', '256'):
-                statusMode = 'available'
+                statusMode = 'active'
             elif statusMode in ('1', '4097', '257'):
                 statusMode = 'away'
             elif statusMode in ('2', '4098', '258'):
@@ -118,13 +126,13 @@ def prittifyEvent(server, event):
                 statusMode = 'streaming media'
             else:
                 statusMode = f'unknown status{statusMode}'
-            output += f'{prittyName} -'
+            output += f'{prittyName} - '
             if userinfo.get('statusmode', 0) != event.parms.statusmode:
-                output += f' Status set to {statusMode}.'
+                output += f'status {statusMode}. '
             if userinfo.get('statusmsg', '') != statusMSG:
-                output += f' Status message set to {event.parms.statusmsg}.'
+                output += f'Status message {event.parms.statusmsg}'
             if userinfo['nickname'] != nickname:
-                output += f' Nickname set to {nickname}.'
+                output += f'Nickname set to {nickname}.'
         case 'addfile':         
             fileName = event.parms.filename if 'filename' in event.parms else 'unknown file'
             owner = event.parms.owner
@@ -155,12 +163,12 @@ def prittifyEvent(server, event):
         case 'messagedeliver':
             if event.parms.type == '1':
                 output += f'Private message from {prittyName}'
-                if destuserid is not None and destuserid != server.me.userid: output += f' to {destPrittyName}'
+                if destuserid is not None and destuserid != server.me.userid: output += f'to {destPrittyName}'
                 output += f': {event.parms.content}'
             elif event.parms.type == '2':
                 channelName = server.channelname(event.parms.chanid)
                 output += f'channel Message from {prittyName}'
-                if server.me.chanid != event.parms.chanid: output += f' to {channelName}'
+                if server.me.chanid != event.parms.chanid: output += f'to {channelName}'
                 output += f': {event.parms.content}'
             if event.parms.type == '3':
                 output += f'Broadcast message from {prittyName}: {event.parms.content}'
