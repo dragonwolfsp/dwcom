@@ -53,5 +53,4 @@ class Manager:
 			self.sequentialSounds.put(s)
 
 	def cleanSounds(self):
-		for s in self.sounds:
-			if not s.isPlaying: self.sounds.remove(s)
+		self.sounds = [s for s in self.sounds if s.isPlaying]

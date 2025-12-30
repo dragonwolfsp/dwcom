@@ -114,7 +114,7 @@ class Sound:
 
 	@property
 	def isPaused(self):
-		return self.source.state == cyal.SourceState.PAUSED
+		return self.alSource.state == cyal.SourceState.PAUSED
 
 	@property
 	def isStopped(self):
