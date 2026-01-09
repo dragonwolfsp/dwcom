@@ -4,6 +4,7 @@ The trigger class for dwcom
 
 import os
 from soundfile import available_formats
+from cyal.exceptions import DeviceNotFoundError
 from trigger_cc import TriggerBase
 from notifiers import sendSystemNotification, sendProwlNotification, ntfyNotifier
 from speech import Speech
@@ -12,7 +13,13 @@ from fileRandomizer import getRandomLine
 from audio.manager import Manager as AudioManager
 from config import Config
 
-audioManager = AudioManager('sounds')
+try:
+    audioManager = AudioManager('sounds')
+    CyalInitialized = True
+except DeviceNotFoundError:
+    print('Cyal was unable to locate devices on your system, sounds will be unavailable.')
+    CyalInitialized = False
+
 config = Config()
 
 serverCaches = {}
@@ -256,6 +263,7 @@ class Trigger(TriggerBase):
         logger.info(self.prittyEvent)
 
     def playSound(self):
+        if not CyalInitialized: return
         playSounds = config.get(self.server.shortname, 'sounds')
         if playSounds != True and  playSounds is not  None: return
         noSound = config.get(self.server.shortname, 'nosound')
@@ -307,7 +315,6 @@ class Trigger(TriggerBase):
                 audioManager.play(fullSoundPath, 0, gain = volume)
             case _:
                 raise ValueError(f'Failed to play sound:\n unsupported playback type {playerType}')
-
 
     def handleCache(self):
         if self.event.event == 'loggedout': 
