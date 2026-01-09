@@ -346,7 +346,8 @@ class Trigger(TriggerBase):
             serverCaches[self.server.shortname]['channels'].pop(self.event.parms.chanid)
 
     def initializeCache(self):
-        if self.server.shortname  not in serverCaches: serverCaches[self.server.shortname] = {'users': {}, 'channels': {}}
+        if self.server.shortname  not in serverCaches: return
+        serverCaches[self.server.shortname] = {'users': {}, 'channels': {}}
         for u in self.server.users:
             u = self.server.users[u]
             userInfo = {
