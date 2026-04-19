@@ -178,6 +178,10 @@ def prittifyEvent(server, event):
                 output += f'Custom message from {prittyName}: {event.parms.content}'
         case 'serverupdate':
             output += 'server updated'
+        case 'adduseraccount':
+            output += f'{"administrator" if event.parms.usertype == '2' else "user"} account {event.parms.username} added.'
+        case 'removeuseraccount':
+            output += f'account {event.parms.username} removed'
         case _: return
     return output
 

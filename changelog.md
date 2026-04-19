@@ -19,3 +19,9 @@ patch: improoves cacheing to avoide issues with left over user ids. This should 
 feat: Dwcom now includes a noSound config option, which behaves the same as  noSpeak.
 feat: Status and nickname change messages are now more concise and useful.
 Feat: The names of channels that are deleted will now be spoken, thanks to yet more caching.
+
+unreleaced:
+
+Patch: fixes issue on linux where in dwcom would fail to initialize when know audio devices are available.
+feat: adds a debug config option, this should prevent random event's from being spoken when support for them has not been added to dwcom.
+Feat: adds support for user accounts being added and removed.
