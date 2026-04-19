@@ -178,7 +178,7 @@ def prittifyEvent(server, event):
                 output += f'Custom message from {prittyName}: {event.parms.content}'
         case 'serverupdate':
             output += 'server updated'
-        case _: return output + event.event
+        case _: return
     return output
 
 class Trigger(TriggerBase):
@@ -200,11 +200,13 @@ class Trigger(TriggerBase):
         self.prittyEvent = prittifyEvent(self.server, self.event)
         self.playSound()    
         self.speak(self.prittyEvent)
+        if config.get(self.server.shortname, 'debug') == True: self.server.output(f'Event: {self.event.event}\n Parms: {self.event.parms}')
         if self.event.event in ('loggedin', 'loggedout', 'messagedeliver'): self.notify()
         self.logEvent()
         self.handleCache()
 
     def speak(self, message):
+        if message is None: return
         doSpeak = config.get(self.server.shortname, 'speech')
         if doSpeak != True and doSpeak is not None: return
         noSpeak = config.get(self.server.shortname, 'nospeak')
