@@ -1,24 +1,24 @@
 """
 config class for dwcom
 """
-
 import atexit
 import os
 from threading import Thread
 from conf import conf
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import weakref
 
 class Config:
     def __init__(self):
         self.serverConfigs = conf.servers()
-        self.watcher = ConfigWatcher('ttcom.conf', self.reloadConf)
+        self.watcher = ConfigWatcher('ttcom.conf', weakref.WeakMethod(self.reloadConf))
         self.observer = Observer()
-        self.observer.schedule(self.watcher, '.', recursive = False)
+        self.observer.schedule(self.watcher, '.', recursive=False)
         self.observer.start()
-        self.observerThread = Thread(target = self.observer.join, daemon = True)
+        self.observerThread = Thread(target=self.observer.join, daemon=True)
         self.observerThread.start()
-        atexit.register(self.close)
+        atexit.register(weakref.WeakMethod(self.close))
 
     def get(self, serverName: str, itemName: str):
         serverConfig = self.serverConfigs.get(serverName)
@@ -47,7 +47,6 @@ class Config:
     def __del__(self):
         self.close()
 
-
 class ConfigWatcher(FileSystemEventHandler):
     def __init__(self, configPath, reloadFunc):
         self.configPath = os.path.abspath(configPath)
@@ -56,4 +55,6 @@ class ConfigWatcher(FileSystemEventHandler):
     def on_modified(self, event):
         if event.is_directory: return
         if os.path.abspath(event.src_path) != self.configPath: return
-        self.reloadFunc()
+        func = self.reloadFunc()
+        if func is not None:
+            func()
