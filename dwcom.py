@@ -8,10 +8,12 @@ from cyal.exceptions import DeviceNotFoundError
 from trigger_cc import TriggerBase
 from notifiers import sendSystemNotification, sendProwlNotification, ntfyNotifier
 from speech import Speech
+from prism import lib as prismLib
 from logger import getServerLogger
 from fileRandomizer import getRandomLine
 from audio.manager import Manager as AudioManager
 from config import Config
+import atexit
 
 try:
     audioManager = AudioManager('sounds')
@@ -21,25 +23,29 @@ except DeviceNotFoundError:
     CyalInitialized = False
 
 config = Config()
+speechContext = None
 
 serverCaches = {}
 
 def getServerSpeaker(serverName: str):
+    global speechContext
     if serverName in serverCaches:
         if 'speaker' in serverCaches[serverName]: return serverCaches[serverName]['speaker']
-    outputModule = config.get(serverName, 'speechdmodule')
     rate= config.get(serverName, 'speechrate')
     volume = config.get(serverName, 'speechvolume')
     voice = config.get(serverName, 'speechvoice')
     pitch = config.get(serverName, 'speechpitch')
     speakerType = config.get(serverName, 'speechengine')
     kwargs = {}
-    if outputModule is not None: kwargs['outputModule'] = outputModule
     if rate is not None: kwargs['rate'] = rate
     if voice is not None: kwargs['voice'] = voice
     if volume is not None: kwargs['volume'] = volume
     if pitch is not None: kwargs['pitch'] = pitch
-    speaker = Speech(speakerType if speakerType is not None else 'auto', **kwargs)
+    if speechContext is None:
+        speaker = Speech(outputType = speakerType if speakerType is not None else 'auto', **kwargs)
+        speechContext = speaker.context
+    else:
+        speaker = Speech( context = speechContext, outputType = speakerType if speakerType is not None else 'auto', **kwargs)
     if serverName not in serverCaches: serverCaches[serverName] = {'speaker': speaker}
     else: serverCaches[serverName]['speaker'] = speaker
     return speaker
@@ -184,6 +190,20 @@ def prittifyEvent(server, event):
             output += f'account {event.parms.username} removed'
         case _: return
     return output
+
+def cleanup():
+    global speechContext
+    try:
+        if speechContext is not None:
+            del(speechContext)
+    except (UnboundLocalError, NameError):
+        pass
+    for i in serverCaches.values():
+        if 'speaker' not in i:    continue
+        i['speaker'].output.stop()
+        del(i['speaker'].output)
+
+atexit.register(cleanup)
 
 class Trigger(TriggerBase):
     def __init__(self, *args, **kwargs):

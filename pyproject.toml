@@ -5,12 +5,11 @@ description = "A trigger that adds several features to the TeamTalk commander."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "accessible-output3>=0.1.2",
     "cyal>=0.4.5",
     "notify-py>=0.3.43",
     "ntfpy>=0.0.12",
+    "prismatoid>=0.16",
     "pyprowl>=3.0.1",
-    "rpaudio>=0.0.18",
     "soundfile>=0.13.1",
     "watchdog>=6.0.0",
 ]

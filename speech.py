@@ -1,69 +1,63 @@
 """
 Speach class, adapted from Electrode.
 """
-
-from accessible_output3 import outputs
-try:
-    from speechd.client import SSIPCommunicationError
-    speechdHere = True
-except ImportError:
-    speechdHere = False
+import prism
 
 class Speech:
     """
     Class for speaking and brailling output.
     """
-    def __init__(self, outputType: str = "auto", **params):
-        """
-        initialize the speech class.
+    def __init__(self, context: prism.Context | None=None, outputType: str = "auto", **params):
+        """initialize the speech class.
 
-
-        :param outputType: Sets the type of output, nvda, jaws, sapi, voiceover, ns, zdsr, speechd, espeak, dolphin, pctalker, systemaccess, windoweyes, or auto, defaults to "auto"
-        :type outputType: str, optional
+        Args:
+            context (prism.Context | None, optional): The prism context for the speech class to use. Defaults to None.
+            outputType (str, optional): Sets the output through wich the speech class will speak, nvda, jaws, zoomtext, sapi, onecore, voiceover, ns, zdsr, speechd, orca,  pctalker, pcreader, systemaccess, windoweyes, or auto. Defaults to "auto".
         """
+        self.context=context or prism.Context()
         self.output = self._getOutput(outputType)
         self.outputType = outputType
-        self.params = params
-        if speechdHere:
-            if isinstance(self.output, outputs.speech_dispatcher.SpeechDispatcher):
-                speechdClient = self.output._client
-                speechdClient.set_priority('notification')
-                # we do this so that orca can interrupt speech, otherwise the screenreader becomes unusable wile we are speaking.
-                if 'outputModule' in params: speechdClient.set_output_module(params['outputModule'])
-                if 'rate' in params: speechdClient.set_rate(params['rate'])
-                if 'volume' in params: speechdClient.set_volume(params['volume'])
-                if 'pitch' in params: speechdClient.set_pitch(params['pitch'])
-                if 'voice' in params: speechdClient.set_synthesis_voice(params['voice'])
-        if hasattr(outputs, 'sapi5'):
-            if isinstance(self.output, outputs.sapi5.SAPI5):
-                if 'rate' in params: self.output.set_rate(params['rate'])
-                if 'volume' in params: self.output.set_volume(params['volume'])
-                if 'pitch' in params: self.output.set_pitch(params['pitch'])
-                if 'voice' in params: self.output.set_voice(params['voice'])
+        outputFeatures        = self.output.features
+        if 'voice' in params and outputFeatures.supports_set_voice:
+            self.output.voice = params['voice']
+        if 'rate' in params and outputFeatures.supports_set_rate:
+            self.output.rate = params['rate']
+        if 'pitch' in params and outputFeatures.supports_set_pitch:
+            self.output.pitch = params['pitch']
+        if 'volume' in params and outputFeatures.supports_set_volume:
+            self.output.volume = params['volume']
 
-    @classmethod
-    def _getOutput(self, outputType: str):
+    def _getOutput(self, outputType: str) -> prism.Backend:
         """
         Gets the output from the provided string.
 
-        :param outputType: The type of output, nvda, jaws,  sapi, voiceover, ns, zdsr, speechd, espeak, dolphin, pctalker, systemaccess, windoweyes, or auto
+        :param outputType: The type of output, nvda, jaws, zoomtext, sapi, onecore, voiceover, ns, zdsr, speechd, orca,  pctalker, pcreader, systemaccess, windoweyes, or auto
         :type outputType: str
         """
+        output = None
+        if outputType == 'auto' or outputType == 'best':
+            return self.context.acquire_best()
         match outputType:
-            case "auto": return outputs.auto.Auto().get_first_available_output()
-            #This only works once, we do not like the auto class from accessible output because it doesn't keep engine settings properly.
-            case "dolphin": return outputs.dolphin.Dolphin()
-            case "espeak": return outputs.e_speak.ESpeak()
-            case "jaws": return outputs.jaws.Jaws()
-            case "mac" | "mackintalk" | "ns" | "nsspeech": return outputs.nsspeechsynthesizer.MacSpeech()
-            case "nvda": return outputs.nvda.NVDA()
-            case "pctalker": return outputs.pc_talker.PCTalker()
-            case "sapi" | "sapi5": return outputs.sapi5.SAPI5()
-            case "speechd", "speech-dispatcher", "speechdispatcher": return outputs.speech_dispatcher.SpeechDispatcher()
-            case "systemaccess": return outputs.system_access.SystemAccess()
-            case "voiceover": return outputs.voiceover.VoiceOver()
-            case "windoweyes": return outputs.window_eyes.WindowEyes()
-            case "zdsr": return outputs.zdsr.ZDSR()
+            case "jaws" | "jfw": output = prism.BackendId.JAWS
+            case "mac" | "mackintalk" | "ns" | "nsspeech" | "avspeech": output = prism.BackendId.AV_SPEECH
+            case "nvda": output = prism.BackendId.NVDA
+            case "pctalker": output = prism.BackendId.PC_TALKER
+            case "sapi" | "sapi5": output = prism.BackendId.SAPI
+            case "speechd" | "speech-dispatcher" | "speechdispatcher": output = prism.BackendId.SPEECH_DISPATCHER
+            case "voiceover": output = prism.BackendId.VOICE_OVER
+            case "zdsr": output = prism.BackendId.ZDSR
+            case "orca": output = prism.BackendId.ORCA
+            case "zoomtext" | "zt": output = prism.BackendId.ZOOM_TEXT
+            case             "onecore": output = prism.BackendId.ONE_CORE
+            case "boipcreader" | "pcreader": output = prism.BackendId.BOY_PC_READER
+            case "systemaccess": output = prism.BackendId.SYSTEM_ACCESS
+            case "windoweyes": output = prism.BackendId.WINDOW_EYES
+            case _: raise ValueError('outputType is not one of: nvda, jaws, zoomtext, sapi, onecore, voiceover, ns, zdsr, speechd, orca,  pctalker, pcreader, systemaccess, windoweyes,  auto.')
+        if self.context.exists(output):
+            return self.context.create(output)
+        else:
+            raise RuntimeError(f'The backend {self.context.name_of(output)} cannot be initialized.')
+
 
     def speak(self, text: str, interrupt: bool = True):
         """
@@ -74,11 +68,7 @@ class Speech:
         :param interrupt: Sets if the spoken text should interrupt the currently speaking text, defaults to True
         :type interrupt: bool, optional
         """
-        if speechdHere:
-            if isinstance(self.output, outputs.speech_dispatcher.SpeechDispatcher):
-                self._speechdSpeak(text, interrupt)
-        else:
-            self.output.speak(text, interrupt= interrupt)
+        self.output.speak(text, interrupt= interrupt)
 
     def braille(self, text: str):
         """
@@ -98,20 +88,8 @@ class Speech:
         :param interrupt: Sets if the spoken text should interrupt the currently speaking text, defaults to True
         :type interrupt: bool, optional
         """
-        self.braille(text)
-        self.speak(text, interrupt = interrupt)
+        self.output.output(text, interrupt = interrupt)
 
-    def _speechdSpeak(self, text: str, interrupt: bool = True):
-        """
-        Speaks the given text with the selected synthesizer. Called only if speechd is beeing used. This is so we can  handel recovery if comunication to speech-dispature is lost.
-
-        :param text: The text to be spoken.
-        :type text: str
-        :param interrupt: Sets if the spoken text should interrupt the currently speaking text, defaults to True
-        :type interrupt: bool, optional
-        """
-        try:
-            self.output.speak(text, interrupt= interrupt)
-        except SSIPCommunicationError:
-            self.__init__(self.outputType, **self.params)
-            self.output.speak(text, interrupt= interrupt)
+    def _Cleanup(self) -> None:
+        self.output.stop()
+        prism.lib.prism_backend_free(self.output._raw)
