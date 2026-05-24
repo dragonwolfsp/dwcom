@@ -44,6 +44,10 @@ class Config:
             self.observer.stop()
             self.observer.join(timeout=1)
 
+    def __del__(self):
+        self.close()
+
+
 class ConfigWatcher(FileSystemEventHandler):
     def __init__(self, configPath, reloadFunc):
         self.configPath = os.path.abspath(configPath)
